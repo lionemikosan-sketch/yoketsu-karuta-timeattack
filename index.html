@@ -1,0 +1,1962 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>要穴かるた｜iPad早押しタイムアタック</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@600;700;800;900&family=Noto+Sans+JP:wght@500;700;900&family=Shippori+Mincho:wght@700;800&display=swap');
+
+    :root {
+      --orange-deep: #C2410C;
+      --orange-main: #EA580C;
+      --orange-bright: #F97316;
+      --orange-light: #FB923C;
+      --orange-pale: #FFF7ED;
+      --ink-black: #111827;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      font-family: 'Inter', 'Noto Sans JP', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(160deg, #FB923C 0%, #F97316 48%, #EA580C 100%);
+      color: #FFFFFF;
+      overflow-x: hidden;
+      touch-action: manipulation;
+    }
+
+    .wa-bg-pattern {
+      background-image:
+        radial-gradient(circle at 20% 15%, rgba(255, 237, 213, 0.28) 0%, transparent 45%),
+        radial-gradient(circle at 85% 80%, rgba(254, 215, 170, 0.22) 0%, transparent 45%),
+        repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.04) 0px, rgba(255, 255, 255, 0.04) 2px, transparent 2px, transparent 14px);
+    }
+
+    .font-karuta {
+      font-family: 'Shippori Mincho', 'Hiragino Mincho ProN', 'Yu Mincho', serif;
+    }
+
+    /* Authentic Japanese Karuta Card (52:73 portrait ratio, crisp white cardstock, black vertical ink) */
+    .karuta-card {
+      position: relative;
+      aspect-ratio: 52 / 73;
+      background: linear-gradient(180deg, #FFFFFF 0%, #FDFBF7 100%);
+      color: #111827;
+      border-radius: 8px;
+      box-shadow:
+        0 5px 0 rgba(124, 45, 18, 0.36),
+        0 9px 16px rgba(124, 45, 18, 0.24),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.9);
+      border: 3px solid #FFFFFF;
+      outline: 1.5px solid rgba(154, 52, 18, 0.22);
+      transition: transform 0.08s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.08s ease, opacity 0.25s ease;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      touch-action: manipulation;
+      will-change: transform, opacity;
+    }
+
+    /* Traditional inner frame (wakusen) like real Hyakunin-isshu / Yoketsu Karuta */
+    .karuta-card::before {
+      content: '';
+      position: absolute;
+      inset: 4px;
+      border: 2px solid #EA580C;
+      border-radius: 4px;
+      pointer-events: none;
+      opacity: 0.82;
+    }
+
+    .karuta-card::after {
+      content: '';
+      position: absolute;
+      inset: 8px;
+      border: 0.75px solid rgba(234, 88, 12, 0.32);
+      border-radius: 2px;
+      pointer-events: none;
+    }
+
+    .karuta-card:active:not(.taken):not(.locked) {
+      transform: translateY(3px) scale(0.95);
+      box-shadow:
+        0 2px 0 rgba(124, 45, 18, 0.4),
+        0 3px 6px rgba(124, 45, 18, 0.2);
+    }
+
+    .karuta-card.upside-down .karuta-inner {
+      transform: rotate(180deg);
+    }
+
+    .karuta-card.taken {
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(-95px) rotate(16deg) scale(1.1);
+      transition: transform 0.36s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+    }
+
+    .karuta-card.taken-left {
+      transform: translate(-75px, -95px) rotate(-20deg) scale(1.1);
+    }
+
+    .karuta-card.taken-right {
+      transform: translate(75px, -95px) rotate(20deg) scale(1.1);
+    }
+
+    .karuta-card.wrong-shake {
+      animation: cardShake 0.36s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+      background: #FEF2F2 !important;
+      outline-color: #DC2626 !important;
+    }
+
+    .karuta-card.wrong-shake::before {
+      border-color: #DC2626;
+    }
+
+    .karuta-card.hint-glow {
+      box-shadow: 0 0 0 4px #FDE047, 0 0 26px rgba(253, 224, 71, 0.95);
+      outline-color: #EAB308;
+    }
+
+    .vertical-text {
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      letter-spacing: 0.08em;
+      line-height: 1.05;
+    }
+
+    /* Fever aura on play screen */
+    .fever-active {
+      box-shadow: inset 0 0 42px rgba(253, 224, 71, 0.55);
+    }
+
+    @keyframes cardShake {
+      10%, 90% { transform: translate3d(-4px, 0, 0) rotate(-1.5deg); }
+      20%, 80% { transform: translate3d(6px, 0, 0) rotate(1.5deg); }
+      30%, 50%, 70% { transform: translate3d(-7px, 0, 0) rotate(-1.5deg); }
+      40%, 60% { transform: translate3d(7px, 0, 0) rotate(1.5deg); }
+    }
+
+    @keyframes popFloat {
+      0% { opacity: 0; transform: translate(-50%, 8px) scale(0.7); }
+      20% { opacity: 1; transform: translate(-50%, -10px) scale(1.14); }
+      80% { opacity: 1; transform: translate(-50%, -28px) scale(1); }
+      100% { opacity: 0; transform: translate(-50%, -44px) scale(0.95); }
+    }
+
+    .float-feedback {
+      position: fixed;
+      z-index: 60;
+      pointer-events: none;
+      animation: popFloat 0.88s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      font-weight: 900;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+      white-space: nowrap;
+    }
+
+    @keyframes rippleAnim {
+      0% { transform: translate(-50%, -50%) scale(0.2); opacity: 0.85; }
+      100% { transform: translate(-50%, -50%) scale(2.8); opacity: 0; }
+    }
+
+    .tap-ripple {
+      position: absolute;
+      width: 54px;
+      height: 54px;
+      border-radius: 9999px;
+      background: radial-gradient(circle, rgba(249, 115, 22, 0.55) 0%, rgba(251, 146, 60, 0) 70%);
+      pointer-events: none;
+      animation: rippleAnim 0.42s ease-out forwards;
+    }
+
+    @keyframes waveBar {
+      0%, 100% { transform: scaleY(0.3); }
+      50% { transform: scaleY(1); }
+    }
+
+    .voice-bar {
+      width: 4px;
+      height: 20px;
+      border-radius: 999px;
+      background: #EA580C;
+      transform-origin: center;
+      animation: waveBar 0.68s ease-in-out infinite;
+    }
+    .voice-bar:nth-child(2) { animation-delay: 0.12s; }
+    .voice-bar:nth-child(3) { animation-delay: 0.24s; }
+    .voice-bar:nth-child(4) { animation-delay: 0.36s; }
+    .voice-bar:nth-child(5) { animation-delay: 0.48s; }
+    .voice-bar.idle { animation: none; transform: scaleY(0.25); opacity: 0.4; }
+
+    @keyframes countdownPop {
+      0% { transform: scale(0.45); opacity: 0; }
+      35% { transform: scale(1.12); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .countdown-pop {
+      animation: countdownPop 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    .play-viewport {
+      height: 100dvh;
+      max-height: 100dvh;
+      overflow: hidden;
+    }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(255,255,255,0.1); }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.4); border-radius: 999px; }
+  </style>
+</head>
+<body class="wa-bg-pattern min-h-screen">
+
+  <!-- Full-screen Particle FX Canvas -->
+  <canvas id="fxCanvas" class="fixed inset-0 w-full h-full pointer-events-none z-50"></canvas>
+
+  <!-- Toast notification -->
+  <div id="toast" class="fixed top-4 left-1/2 -translate-x-1/2 z-[70] bg-gray-900/92 text-white px-5 py-2.5 rounded-full text-sm font-bold shadow-xl opacity-0 pointer-events-none transition-opacity duration-200 whitespace-nowrap"></div>
+
+  <!-- ==================== TITLE SCREEN ==================== -->
+  <div id="screen-title" class="min-h-screen w-full max-w-[780px] mx-auto px-4 sm:px-6 py-5 sm:py-7 flex flex-col justify-between gap-4">
+    <!-- Top Bar -->
+    <header class="flex items-center justify-between">
+      <div class="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm border border-white/30 px-3.5 py-1.5 rounded-full">
+        <span class="w-2.5 h-2.5 rounded-full bg-yellow-300 animate-pulse"></span>
+        <span class="text-xs sm:text-sm font-extrabold tracking-wide text-white">iPad縦画面・音声早押しタイムアタック</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="btn-open-dict" type="button" class="bg-white/20 hover:bg-white/30 active:scale-95 transition text-white text-xs sm:text-sm font-bold px-3.5 py-2 rounded-full border border-white/35">
+          要穴一覧
+        </button>
+        <button id="btn-title-mute" type="button" class="bg-white/20 hover:bg-white/30 active:scale-95 transition text-white text-xs sm:text-sm font-bold px-3.5 py-2 rounded-full border border-white/35" aria-label="音声切替">
+          音 ON
+        </button>
+      </div>
+    </header>
+
+    <!-- Hero Title Card -->
+    <section class="text-center py-1.5">
+      <div class="inline-block bg-white text-orange-600 font-black text-xs sm:text-sm tracking-[0.22em] px-4 py-1 rounded-full shadow-md mb-2">
+        経絡経穴概論 準拠
+      </div>
+      <h1 class="font-karuta text-5xl sm:text-6xl font-extrabold tracking-wider text-white drop-shadow-[0_4px_12px_rgba(154,52,18,0.45)]">
+        要穴かるた
+      </h1>
+      <p class="mt-2 text-sm sm:text-base font-bold text-orange-50/95">
+        読み上げ音声を聴いて、縦長かるた札を瞬時に払い取れ！
+      </p>
+    </section>
+
+    <!-- Main Setup Panel (White card, Crisp Black text) -->
+    <main class="bg-white text-gray-900 rounded-3xl shadow-2xl p-5 sm:p-6 space-y-5 border-2 border-orange-200">
+      <!-- 1. Card Count Selection (10 vs 20) -->
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-sm font-black text-gray-900 flex items-center gap-2">
+            <span class="w-6 h-6 rounded-full bg-orange-500 text-white text-xs flex items-center justify-center font-black">1</span>
+            札の枚数を選ぶ
+          </label>
+          <span class="text-xs font-bold text-orange-600">本物比率（52:73）のかるた札</span>
+        </div>
+        <div class="grid grid-cols-2 gap-3" id="count-selector">
+          <button type="button" data-count="10" class="count-opt relative rounded-2xl p-3.5 sm:p-4 border-2 text-left transition active:scale-98">
+            <div class="flex items-baseline justify-between">
+              <span class="text-2xl sm:text-3xl font-black">10枚</span>
+              <span class="text-xs font-extrabold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">5列 × 2段</span>
+            </div>
+            <p class="text-xs font-bold mt-1 opacity-80">サクッと集中・見やすい配置</p>
+          </button>
+          <button type="button" data-count="20" class="count-opt relative rounded-2xl p-3.5 sm:p-4 border-2 text-left transition active:scale-98">
+            <div class="flex items-baseline justify-between">
+              <span class="text-2xl sm:text-3xl font-black">20枚</span>
+              <span class="text-xs font-extrabold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">5列 × 4段</span>
+            </div>
+            <p class="text-xs font-bold mt-1 opacity-80">本格スピード勝負</p>
+          </button>
+        </div>
+      </div>
+
+      <!-- 2. Deck Selection -->
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-sm font-black text-gray-900 flex items-center gap-2">
+            <span class="w-6 h-6 rounded-full bg-orange-500 text-white text-xs flex items-center justify-center font-black">2</span>
+            出題範囲（デッキ）
+          </label>
+          <span id="deck-count-badge" class="text-xs font-bold text-gray-500">全60穴からランダム出題</span>
+        </div>
+        <div class="grid grid-cols-3 gap-2.5" id="deck-selector">
+          <button type="button" data-deck="gogyo" class="deck-opt rounded-2xl p-3 border-2 text-center transition active:scale-95">
+            <div class="text-sm sm:text-base font-black">五行穴</div>
+            <div class="text-[11px] font-bold opacity-75 mt-0.5">井・滎・兪・経・合</div>
+          </button>
+          <button type="button" data-deck="goyou" class="deck-opt rounded-2xl p-3 border-2 text-center transition active:scale-95">
+            <div class="text-sm sm:text-base font-black">五要穴</div>
+            <div class="text-[11px] font-bold opacity-75 mt-0.5">原・郄・絡・募・兪</div>
+          </button>
+          <button type="button" data-deck="mix" class="deck-opt rounded-2xl p-3 border-2 text-center transition active:scale-95">
+            <div class="text-sm sm:text-base font-black">全ミックス</div>
+            <div class="text-[11px] font-bold opacity-75 mt-0.5">全120問から出題</div>
+          </button>
+        </div>
+      </div>
+
+      <!-- 3. Quick Options -->
+      <div class="bg-orange-50 rounded-2xl p-3.5 border border-orange-200/80 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+        <button id="opt-speed" type="button" class="bg-white border border-orange-200 hover:border-orange-400 rounded-xl px-3 py-2 text-left transition active:scale-95">
+          <div class="text-[10px] font-extrabold text-orange-600 uppercase">読み上げ速度</div>
+          <div id="opt-speed-val" class="text-sm font-black text-gray-900 mt-0.5">標準 (1.0x)</div>
+        </button>
+        <button id="opt-furigana" type="button" class="bg-white border border-orange-200 hover:border-orange-400 rounded-xl px-3 py-2 text-left transition active:scale-95">
+          <div class="text-[10px] font-extrabold text-orange-600 uppercase">札のふりがな</div>
+          <div id="opt-furigana-val" class="text-sm font-black text-gray-900 mt-0.5">OFF（本番）</div>
+        </button>
+        <button id="opt-orientation" type="button" class="bg-white border border-orange-200 hover:border-orange-400 rounded-xl px-3 py-2 text-left transition active:scale-95">
+          <div class="text-[10px] font-extrabold text-orange-600 uppercase">札の向き</div>
+          <div id="opt-orientation-val" class="text-sm font-black text-gray-900 mt-0.5">正位置</div>
+        </button>
+        <button id="opt-bgm" type="button" class="bg-white border border-orange-200 hover:border-orange-400 rounded-xl px-3 py-2 text-left transition active:scale-95">
+          <div class="text-[10px] font-extrabold text-orange-600 uppercase">BGM演出</div>
+          <div id="opt-bgm-val" class="text-sm font-black text-gray-900 mt-0.5">ON（和モダン）</div>
+        </button>
+      </div>
+
+      <!-- Personal Best Preview for Selected Mode -->
+      <div class="flex items-center justify-between bg-gray-900 text-white rounded-2xl px-4 py-3.5">
+        <div>
+          <div class="text-[11px] font-bold text-orange-300 tracking-wide" id="pb-mode-label">自己ベスト（五行穴・10枚）</div>
+          <div class="flex items-baseline gap-2.5 mt-0.5">
+            <span id="pb-best-time" class="text-2xl sm:text-3xl font-black tabular-nums text-white">--.-- 秒</span>
+            <span id="pb-best-sub" class="text-xs font-bold text-gray-300">まだ記録がありません</span>
+          </div>
+        </div>
+        <button id="btn-open-records" type="button" class="bg-orange-500 hover:bg-orange-400 active:scale-95 transition text-white text-xs font-black px-3.5 py-2 rounded-xl">
+          履歴を見る
+        </button>
+      </div>
+
+      <!-- Big Start Button -->
+      <button id="btn-start-game" type="button" class="w-full py-4 sm:py-5 rounded-2xl bg-gradient-to-r from-orange-500 via-orange-600 to-amber-600 hover:brightness-105 active:scale-[0.98] transition text-white font-black text-xl sm:text-2xl tracking-wider shadow-[0_6px_0_#9A3412,0_12px_24px_rgba(234,88,12,0.4)]">
+        スタート！
+      </button>
+    </main>
+
+    <!-- Footer tip -->
+    <footer class="text-center text-xs font-bold text-orange-100/90 pb-2">
+      音声のみで出題｜お手つきは +2.0秒｜5コンボ以上でフィーバー演出＆自己ベスト・ゴースト対戦！
+    </footer>
+  </div>
+
+  <!-- ==================== GAMEPLAY SCREEN (iPad Portrait Locked) ==================== -->
+  <div id="screen-play" class="hidden play-viewport w-full max-w-[820px] mx-auto px-3 sm:px-5 py-2.5 sm:py-3.5 flex flex-col gap-2 transition-shadow duration-300">
+    <!-- Top HUD -->
+    <header class="flex items-center justify-between gap-2 shrink-0">
+      <div class="flex items-center gap-2">
+        <button id="btn-quit" type="button" class="bg-white/20 hover:bg-white/30 active:scale-95 transition text-white text-xs sm:text-sm font-black px-3 py-2 rounded-xl border border-white/35">
+          中断
+        </button>
+        <div class="bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl px-3 py-1.5 flex items-center gap-1.5">
+          <span class="text-[11px] font-bold text-orange-100">残り</span>
+          <span id="hud-remaining" class="text-lg sm:text-xl font-black tabular-nums text-white">10</span>
+          <span class="text-xs font-bold text-orange-100">枚</span>
+        </div>
+      </div>
+
+      <!-- Main Timer + Live Ghost Pace Diff -->
+      <div class="bg-white text-gray-900 rounded-2xl px-3.5 sm:px-5 py-1.5 shadow-lg border-2 border-orange-200 flex items-center gap-2.5">
+        <div class="text-center">
+          <div class="text-[10px] font-extrabold text-orange-600 leading-none">TIME</div>
+          <div id="hud-timer" class="text-2xl sm:text-3xl font-black tabular-nums tracking-tight leading-tight text-gray-900">00.00</div>
+        </div>
+        <div id="hud-ghost-badge" class="text-[11px] sm:text-xs font-black px-2 py-1 rounded-lg bg-orange-100 text-orange-700 tabular-nums whitespace-nowrap">
+          初記録に挑戦
+        </div>
+      </div>
+
+      <!-- Right HUD controls -->
+      <div class="flex items-center gap-1.5">
+        <div id="hud-combo-box" class="bg-gray-900/85 text-yellow-300 rounded-xl px-2.5 py-1.5 text-center min-w-[56px] transition-all">
+          <div id="hud-combo-label" class="text-[9px] font-extrabold text-orange-200 leading-none">COMBO</div>
+          <div id="hud-combo" class="text-base sm:text-lg font-black tabular-nums leading-tight">0</div>
+        </div>
+        <button id="btn-play-bgm" type="button" class="bg-white/20 hover:bg-white/30 active:scale-95 transition text-white text-xs font-black px-2.5 py-2 rounded-xl border border-white/35" title="BGM切替">
+          BGM
+        </button>
+      </div>
+    </header>
+
+    <!-- Audio-Only Reader Bar (NO answer text shown!) -->
+    <section class="bg-white text-gray-900 rounded-2xl px-3.5 sm:px-4 py-2 sm:py-2.5 shadow-xl border-2 border-orange-200 flex items-center justify-between gap-3 shrink-0">
+      <div class="flex items-center gap-3 min-w-0 flex-1">
+        <!-- Audio wave indicator -->
+        <div class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-orange-100 shrink-0" aria-hidden="true">
+          <span class="voice-bar idle"></span>
+          <span class="voice-bar idle"></span>
+          <span class="voice-bar idle"></span>
+          <span class="voice-bar idle"></span>
+          <span class="voice-bar idle"></span>
+        </div>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-2">
+            <span id="prompt-q-badge" class="text-[10px] sm:text-xs font-black px-2 py-0.5 rounded-md bg-orange-500 text-white">第1問</span>
+            <span id="prompt-status" class="text-xs sm:text-sm font-black text-gray-900 truncate">耳を澄ませて、音声から札を取ろう！</span>
+          </div>
+          <div id="prompt-last-taken" class="text-[11px] sm:text-xs font-bold text-orange-700 truncate mt-0.5">
+            聞き逃したら右の「もう一度」をタップ
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-1.5 shrink-0">
+        <button id="btn-replay-voice" type="button" class="bg-orange-500 hover:bg-orange-600 active:scale-95 transition text-white text-xs sm:text-sm font-black px-3 sm:px-4 py-2 rounded-xl shadow-md">
+          もう一度
+        </button>
+        <button id="btn-hint" type="button" class="bg-orange-100 hover:bg-orange-200 active:scale-95 transition text-orange-800 text-xs sm:text-sm font-black px-2.5 sm:px-3 py-2 rounded-xl">
+          ヒント
+        </button>
+      </div>
+    </section>
+
+    <!-- Progress + Ghost Pace Bar -->
+    <div class="relative w-full h-2.5 bg-black/25 rounded-full overflow-hidden shrink-0">
+      <div id="hud-ghost-bar" class="hidden absolute top-0 left-0 h-full bg-white/45 rounded-full transition-all duration-100" style="width: 0%"></div>
+      <div id="hud-progress" class="relative h-full bg-yellow-300 rounded-full transition-all duration-200" style="width: 0%"></div>
+    </div>
+
+    <!-- Karuta Board Area (Dynamically sized 52:73 portrait cards, zero scroll) -->
+    <main id="karuta-board-wrap" class="flex-1 min-h-0 w-full flex items-center justify-center py-1">
+      <div id="karuta-board" class="grid place-items-center">
+        <!-- Cards dynamically rendered here -->
+      </div>
+    </main>
+  </div>
+
+  <!-- ==================== COUNTDOWN OVERLAY ==================== -->
+  <div id="overlay-countdown" class="hidden fixed inset-0 z-40 bg-orange-600/88 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center">
+    <div class="text-sm sm:text-base font-black tracking-widest text-orange-100 mb-3" id="countdown-subtitle">五行穴・10枚 タイムアタック</div>
+    <div id="countdown-num" class="font-karuta text-8xl sm:text-9xl font-extrabold text-white drop-shadow-[0_8px_24px_rgba(124,45,18,0.5)]">3</div>
+    <p class="mt-6 text-sm sm:text-base font-bold text-orange-50">文字は出ません！読み上げ音声に集中してタップ！</p>
+  </div>
+
+  <!-- ==================== RESULT SCREEN ==================== -->
+  <div id="screen-result" class="hidden min-h-screen w-full max-w-[780px] mx-auto px-4 sm:px-6 py-5 sm:py-7 flex flex-col gap-4">
+    <div class="bg-white text-gray-900 rounded-3xl shadow-2xl p-5 sm:p-7 border-2 border-orange-200 space-y-5">
+      <!-- Top Result Banner -->
+      <div class="text-center space-y-2">
+        <div id="res-new-record" class="hidden inline-flex items-center gap-1.5 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs sm:text-sm font-black px-4 py-1 rounded-full shadow-md animate-bounce">
+          NEW RECORD! 自己ベスト更新！
+        </div>
+        <div id="res-mode-info" class="text-xs sm:text-sm font-extrabold text-orange-600">五行穴・10枚モード</div>
+        <div class="flex items-center justify-center gap-4">
+          <div id="res-rank-badge" class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-orange-500 text-white font-black text-3xl sm:text-4xl flex items-center justify-center shadow-lg">
+            S
+          </div>
+          <div class="text-left">
+            <div class="text-xs font-extrabold text-gray-500">クリアタイム</div>
+            <div id="res-total-time" class="text-4xl sm:text-5xl font-black tabular-nums text-gray-900 leading-none mt-0.5">00.00<span class="text-xl ml-1">秒</span></div>
+            <div id="res-penalty-note" class="text-xs font-bold text-orange-600 mt-1">ノーミス完走！</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats Grid -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+        <div class="bg-orange-50 rounded-2xl p-3 text-center border border-orange-200/70">
+          <div class="text-[11px] font-extrabold text-orange-700">平均反応</div>
+          <div id="res-avg-react" class="text-xl font-black tabular-nums text-gray-900 mt-0.5">0.00秒</div>
+        </div>
+        <div class="bg-orange-50 rounded-2xl p-3 text-center border border-orange-200/70">
+          <div class="text-[11px] font-extrabold text-orange-700">最速タップ</div>
+          <div id="res-best-react" class="text-xl font-black tabular-nums text-gray-900 mt-0.5">0.00秒</div>
+        </div>
+        <div class="bg-orange-50 rounded-2xl p-3 text-center border border-orange-200/70">
+          <div class="text-[11px] font-extrabold text-orange-700">正答率</div>
+          <div id="res-accuracy" class="text-xl font-black tabular-nums text-gray-900 mt-0.5">100%</div>
+        </div>
+        <div class="bg-orange-50 rounded-2xl p-3 text-center border border-orange-200/70">
+          <div class="text-[11px] font-extrabold text-orange-700">最大コンボ</div>
+          <div id="res-max-combo" class="text-xl font-black tabular-nums text-gray-900 mt-0.5">10</div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="grid grid-cols-2 gap-3">
+        <button id="btn-retry" type="button" class="py-4 rounded-2xl bg-gradient-to-r from-orange-500 to-orange-600 hover:brightness-105 active:scale-98 transition text-white font-black text-lg shadow-[0_4px_0_#9A3412]">
+          もう一回挑戦！
+        </button>
+        <button id="btn-to-title" type="button" class="py-4 rounded-2xl bg-gray-900 hover:bg-gray-800 active:scale-98 transition text-white font-black text-lg">
+          設定・タイトルへ
+        </button>
+      </div>
+
+      <!-- Weak-Card Revenge Drill Button (shown when mistakes or slow cards exist) -->
+      <button id="btn-revenge" type="button" class="hidden w-full py-3.5 rounded-2xl bg-amber-100 hover:bg-amber-200 active:scale-[0.99] transition text-orange-900 font-black text-sm sm:text-base border-2 border-orange-300">
+        苦手だった札を集中特訓する（10枚リベンジ）
+      </button>
+
+      <!-- Review List -->
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-sm font-black text-gray-900">今回の振り返り（遅かった・お手つき順）</h2>
+          <span class="text-xs font-bold text-gray-500">タップで読み上げ確認</span>
+        </div>
+        <div id="res-review-list" class="max-h-[300px] overflow-y-auto space-y-2 pr-1">
+          <!-- Review items rendered here -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== RECORDS MODAL ==================== -->
+  <div id="modal-records" class="hidden fixed inset-0 z-50 bg-black/55 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white text-gray-900 rounded-3xl w-full max-w-[540px] max-h-[85vh] flex flex-col overflow-hidden shadow-2xl border-2 border-orange-200">
+      <div class="bg-orange-500 text-white px-5 py-4 flex items-center justify-between">
+        <h2 class="text-lg font-black">自己ベスト履歴</h2>
+        <button id="btn-close-records" type="button" class="bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full text-sm font-black">閉じる</button>
+      </div>
+      <div id="records-content" class="p-5 overflow-y-auto space-y-4 flex-1"></div>
+      <div class="px-5 py-3 bg-orange-50 border-t border-orange-200 flex justify-between items-center">
+        <span class="text-xs font-bold text-gray-500">ブラウザ内に自動保存されます</span>
+        <button id="btn-clear-records" type="button" class="text-xs font-black text-red-600 hover:underline">記録をリセット</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== DICTIONARY MODAL ==================== -->
+  <div id="modal-dict" class="hidden fixed inset-0 z-50 bg-black/55 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white text-gray-900 rounded-3xl w-full max-w-[680px] max-h-[88vh] flex flex-col overflow-hidden shadow-2xl border-2 border-orange-200">
+      <div class="bg-orange-500 text-white px-5 py-4 flex items-center justify-between">
+        <div>
+          <h2 class="text-lg font-black">要穴一覧・音声予習</h2>
+          <p class="text-xs font-bold text-orange-100">行をタップすると読み上げ音声を確認できます</p>
+        </div>
+        <button id="btn-close-dict" type="button" class="bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full text-sm font-black">閉じる</button>
+      </div>
+      <div class="p-3 bg-orange-50 border-b border-orange-200 flex flex-wrap gap-2">
+        <button type="button" data-dict-tab="gogyo" class="dict-tab px-4 py-1.5 rounded-full text-xs font-black bg-orange-500 text-white">五行穴（60穴）</button>
+        <button type="button" data-dict-tab="goyou" class="dict-tab px-4 py-1.5 rounded-full text-xs font-black bg-white text-gray-700 border border-orange-200">五要穴（60穴）</button>
+        <input id="dict-search" type="text" placeholder="経絡・ツボ名で検索..." class="ml-auto flex-1 min-w-[160px] bg-white border border-orange-200 rounded-full px-3.5 py-1.5 text-xs font-bold text-gray-900 focus:outline-none focus:border-orange-500" />
+      </div>
+      <div id="dict-list" class="p-4 overflow-y-auto space-y-2 flex-1"></div>
+    </div>
+  </div>
+
+  <script>
+    /* =========================================================================
+       1. COMPLETE GROUNDED ACUPOINT DATASET
+       Source: 『新版 経絡経穴概論』参考資料・要穴まとめ & Wikipedia『五行穴』
+       ========================================================================= */
+    const MERIDIANS = [
+      { id: 'LU', name: '手の太陰肺経', short: '肺経', read: 'てのたいいんはいけい', yinYang: 'yin' },
+      { id: 'LI', name: '手の陽明大腸経', short: '大腸経', read: 'てのようめいだいちょうけい', yinYang: 'yang' },
+      { id: 'ST', name: '足の陽明胃経', short: '胃経', read: 'あしのようめいいけい', yinYang: 'yang' },
+      { id: 'SP', name: '足の太陰脾経', short: '脾経', read: 'あしのたいいんひけい', yinYang: 'yin' },
+      { id: 'HT', name: '手の少陰心経', short: '心経', read: 'てのしょういんしんけい', yinYang: 'yin' },
+      { id: 'SI', name: '手の太陽小腸経', short: '小腸経', read: 'てのたいようしょうちょうけい', yinYang: 'yang' },
+      { id: 'BL', name: '足の太陽膀胱経', short: '膀胱経', read: 'あしのたいようぼうこうけい', yinYang: 'yang' },
+      { id: 'KI', name: '足の少陰腎経', short: '腎経', read: 'あしのしょういんじんけい', yinYang: 'yin' },
+      { id: 'PC', name: '手の厥陰心包経', short: '心包経', read: 'てのけついんしんぽうけい', yinYang: 'yin' },
+      { id: 'TE', name: '手の少陽三焦経', short: '三焦経', read: 'てのしょうようさんしょうけい', yinYang: 'yang' },
+      { id: 'GB', name: '足の少陽胆経', short: '胆経', read: 'あしのしょうようたんけい', yinYang: 'yang' },
+      { id: 'LR', name: '足の厥陰肝経', short: '肝経', read: 'あしのけついんかんけい', yinYang: 'yin' }
+    ];
+
+    const GOGYO_TYPES_YIN = [
+      { label: '井木穴', read: 'せいもくけつ' },
+      { label: '滎火穴', read: 'えいかけつ' },
+      { label: '兪土穴', read: 'ゆどけつ' },
+      { label: '経金穴', read: 'けいきんけつ' },
+      { label: '合水穴', read: 'ごうすいけつ' }
+    ];
+
+    const GOGYO_TYPES_YANG = [
+      { label: '井金穴', read: 'せいきんけつ' },
+      { label: '滎水穴', read: 'えいすいけつ' },
+      { label: '兪木穴', read: 'ゆもくけつ' },
+      { label: '経火穴', read: 'けいかけつ' },
+      { label: '合土穴', read: 'ごうどけつ' }
+    ];
+
+    const GOGYO_RAW = {
+      LU: [['少商','しょうしょう'], ['魚際','ぎょさい'], ['太淵','たいえん'], ['経渠','けいきょ'], ['尺沢','しゃくたく']],
+      LI: [['商陽','しょうよう'], ['二間','じかん'], ['三間','さんかん'], ['陽渓','ようけい'], ['曲池','きょくち']],
+      ST: [['厲兌','れいだ'], ['内庭','ないてい'], ['陥谷','かんこく'], ['解渓','かいけい'], ['足三里','あしさんり']],
+      SP: [['隠白','いんぱく'], ['大都','だいと'], ['太白','たいはく'], ['商丘','しょうきゅう'], ['陰陵泉','いんりょうせん']],
+      HT: [['少衝','しょうしょう'], ['少府','しょうふ'], ['神門','しんもん'], ['霊道','れいどう'], ['少海','しょうかい']],
+      SI: [['少沢','しょうたく'], ['前谷','ぜんこく'], ['後渓','こうけい'], ['陽谷','ようこく'], ['小海','しょうかい']],
+      BL: [['至陰','しいん'], ['足通谷','あしつうこく'], ['束骨','そっこつ'], ['崑崙','こんろん'], ['委中','いちゅう']],
+      KI: [['湧泉','ゆうせん'], ['然谷','ねんこく'], ['太渓','たいけい'], ['復溜','ふくりゅう'], ['陰谷','いんこく']],
+      PC: [['中衝','ちゅうしょう'], ['労宮','ろうきゅう'], ['大陵','だいりょう'], ['間使','かんし'], ['曲沢','きょくたく']],
+      TE: [['関衝','かんしょう'], ['液門','えきもん'], ['中渚','ちゅうしょ'], ['支溝','しこう'], ['天井','てんせい']],
+      GB: [['足竅陰','あしきょういん'], ['侠渓','きょうけい'], ['足臨泣','あしりんきゅう'], ['陽輔','ようほ'], ['陽陵泉','ようりょうせん']],
+      LR: [['大敦','たいとん'], ['行間','こうかん'], ['太衝','たいしょう'], ['中封','ちゅうほう'], ['曲泉','きょくせん']]
+    };
+
+    const GOYOU_TYPES = [
+      { label: '原穴', read: 'げんけつ' },
+      { label: '郄穴', read: 'げきけつ' },
+      { label: '絡穴', read: 'らくけつ' },
+      { label: '募穴', read: 'ぼけつ' },
+      { label: '背部兪穴', read: 'はいぶゆけつ' }
+    ];
+
+    const GOYOU_RAW = {
+      LU: [['太淵','たいえん'], ['孔最','こうさい'], ['列欠','れっけつ'], ['中府','ちゅうふ'], ['肺兪','はいゆ']],
+      LI: [['合谷','ごうこく'], ['温溜','おんる'], ['偏歴','へんれき'], ['天枢','てんすう'], ['大腸兪','だいちょうゆ']],
+      ST: [['衝陽','しょうよう'], ['梁丘','りょうきゅう'], ['豊隆','ほうりゅう'], ['中脘','ちゅうかん'], ['胃兪','いゆ']],
+      SP: [['太白','たいはく'], ['地機','ちき'], ['公孫','こうそん'], ['章門','しょうもん'], ['脾兪','ひゆ']],
+      HT: [['神門','しんもん'], ['陰郄','いんげき'], ['通里','つうり'], ['巨闕','こけつ'], ['心兪','しんゆ']],
+      SI: [['腕骨','わんこく'], ['養老','ようろう'], ['支正','しせい'], ['関元','かんげん'], ['小腸兪','しょうちょうゆ']],
+      BL: [['京骨','けいこつ'], ['金門','きんもん'], ['飛揚','ひよう'], ['中極','ちゅうきょく'], ['膀胱兪','ぼうこうゆ']],
+      KI: [['太渓','たいけい'], ['水泉','すいせん'], ['大鐘','だいしょう'], ['京門','けいもん'], ['腎兪','じんゆ']],
+      PC: [['大陵','だいりょう'], ['郄門','げきもん'], ['内関','ないかん'], ['膻中','だんちゅう'], ['厥陰兪','けついんゆ']],
+      TE: [['陽池','ようち'], ['会宗','えそう'], ['外関','がいかん'], ['石門','せきもん'], ['三焦兪','さんしょうゆ']],
+      GB: [['丘墟','きゅうきょ'], ['外丘','がいきゅう'], ['光明','こうめい'], ['日月','じつげつ'], ['胆兪','たんゆ']],
+      LR: [['太衝','たいしょう'], ['中都','ちゅうと'], ['蠡溝','れいこう'], ['期門','きもん'], ['肝兪','かんゆ']]
+    };
+
+    function buildDecks() {
+      const gogyo = [];
+      const goyou = [];
+      MERIDIANS.forEach(m => {
+        const types = m.yinYang === 'yin' ? GOGYO_TYPES_YIN : GOGYO_TYPES_YANG;
+        GOGYO_RAW[m.id].forEach((pt, idx) => {
+          gogyo.push({
+            id: `gogyo_${m.id}_${idx}`,
+            deck: 'gogyo',
+            deckLabel: '五行穴',
+            meridian: m.name,
+            meridianShort: m.short,
+            meridianRead: m.read,
+            role: types[idx].label,
+            roleRead: types[idx].read,
+            point: pt[0],
+            pointRead: pt[1]
+          });
+        });
+        GOYOU_RAW[m.id].forEach((pt, idx) => {
+          goyou.push({
+            id: `goyou_${m.id}_${idx}`,
+            deck: 'goyou',
+            deckLabel: '五要穴',
+            meridian: m.name,
+            meridianShort: m.short,
+            meridianRead: m.read,
+            role: GOYOU_TYPES[idx].label,
+            roleRead: GOYOU_TYPES[idx].read,
+            point: pt[0],
+            pointRead: pt[1]
+          });
+        });
+      });
+      return { gogyo, goyou, mix: [...gogyo, ...goyou] };
+    }
+
+    const DECKS = buildDecks();
+
+    /* =========================================================================
+       2. WEB AUDIO ENGINE (WA-MODERN BGM + TACTILE KARUTA SE)
+       ========================================================================= */
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+        this.muted = false;
+        this.bgmEnabled = true;
+        this.bgmPlaying = false;
+        this.bgmTimer = null;
+        this.step = 0;
+        this.fastMode = false;
+        this.feverMode = false;
+        this.noiseBuffer = null;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (!AudioCtx) return;
+          this.ctx = new AudioCtx();
+          const bufSize = this.ctx.sampleRate * 0.35;
+          this.noiseBuffer = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+          const data = this.noiseBuffer.getChannelData(0);
+          for (let i = 0; i < bufSize; i++) {
+            data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (this.ctx.sampleRate * 0.05));
+          }
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume().catch(() => {});
+        }
+      }
+
+      playClick() {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(680, now);
+        osc.frequency.exponentialRampToValueAtTime(340, now + 0.04);
+        gain.gain.setValueAtTime(0.14, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.05);
+      }
+
+      playClack(accent = false) {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const freqs = accent ? [1520, 2280] : [1180, 1760];
+        freqs.forEach((f, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(f, now);
+          osc.frequency.exponentialRampToValueAtTime(f * 0.85, now + 0.07);
+          gain.gain.setValueAtTime(idx === 0 ? 0.24 : 0.14, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.1);
+        });
+      }
+
+      playPromptCue() {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, now);
+        gain.gain.setValueAtTime(0.08, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.15);
+      }
+
+      playCorrect(combo = 1) {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+
+        if (this.noiseBuffer) {
+          const src = this.ctx.createBufferSource();
+          src.buffer = this.noiseBuffer;
+          const filter = this.ctx.createBiquadFilter();
+          filter.type = 'bandpass';
+          filter.frequency.setValueAtTime(1450, now);
+          filter.Q.setValueAtTime(1.1, now);
+          const nGain = this.ctx.createGain();
+          nGain.gain.setValueAtTime(0.48, now);
+          nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+          src.connect(filter);
+          filter.connect(nGain);
+          nGain.connect(this.ctx.destination);
+          src.start(now);
+          src.stop(now + 0.1);
+        }
+
+        const thump = this.ctx.createOscillator();
+        const tGain = this.ctx.createGain();
+        thump.type = 'sine';
+        thump.frequency.setValueAtTime(190, now);
+        thump.frequency.exponentialRampToValueAtTime(55, now + 0.08);
+        tGain.gain.setValueAtTime(0.3, now);
+        tGain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+        thump.connect(tGain);
+        tGain.connect(this.ctx.destination);
+        thump.start(now);
+        thump.stop(now + 0.1);
+
+        const scale = [587.33, 659.25, 783.99, 880.00, 987.77, 1174.66, 1318.51, 1567.98];
+        const idx = Math.min(combo - 1, scale.length - 1);
+        const baseFreq = scale[idx];
+        const chord = combo >= 5 ? [baseFreq, baseFreq * 1.25, baseFreq * 1.5] : [baseFreq, baseFreq * 1.5];
+        chord.forEach((freq, i) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = i === 0 ? 'triangle' : 'sine';
+          osc.frequency.setValueAtTime(freq, now + i * 0.04);
+          gain.gain.setValueAtTime(0.22 - i * 0.05, now + i * 0.04);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28 + i * 0.05);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now + i * 0.04);
+          osc.stop(now + 0.36);
+        });
+      }
+
+      playWrong() {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        [190, 145].forEach((freq, i) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(freq, now + i * 0.09);
+          const filter = this.ctx.createBiquadFilter();
+          filter.type = 'lowpass';
+          filter.frequency.setValueAtTime(650, now);
+          gain.gain.setValueAtTime(0.18, now + i * 0.09);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.09 + 0.14);
+          osc.connect(filter);
+          filter.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now + i * 0.09);
+          osc.stop(now + i * 0.09 + 0.15);
+        });
+      }
+
+      playFanfare(isNewRecord = false) {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const notes = isNewRecord
+          ? [587.33, 659.25, 783.99, 880.00, 1174.66, 1318.51, 1567.98]
+          : [587.33, 783.99, 880.00, 1174.66];
+        notes.forEach((f, i) => {
+          const t = now + i * 0.085;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(f, t);
+          gain.gain.setValueAtTime(0.22, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + (i === notes.length - 1 ? 0.65 : 0.25));
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.7);
+        });
+      }
+
+      _koto(freq, vol = 0.05, dur = 0.22) {
+        if (!this.ctx || this.muted || !this.bgmEnabled) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        const filter = this.ctx.createBiquadFilter();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(freq, now);
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(freq * 4.5, now);
+        filter.frequency.exponentialRampToValueAtTime(freq * 1.1, now + dur);
+        gain.gain.setValueAtTime(vol, now);
+        gain.gain.exponentialRampToValueAtTime(0.0008, now + dur);
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + dur + 0.02);
+      }
+
+      _taiko(vol = 0.075) {
+        if (!this.ctx || this.muted || !this.bgmEnabled) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(115, now);
+        osc.frequency.exponentialRampToValueAtTime(48, now + 0.14);
+        gain.gain.setValueAtTime(vol, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.17);
+      }
+
+      startBgm() {
+        this.stopBgm();
+        if (!this.bgmEnabled || this.muted) return;
+        this.init();
+        this.bgmPlaying = true;
+        this.step = 0;
+
+        const melody = [
+          587.33, 0, 493.88, 440.00, 392.00, 0, 440.00, 493.88,
+          587.33, 659.25, 587.33, 0, 440.00, 0, 392.00, 0,
+          440.00, 0, 493.88, 587.33, 659.25, 0, 587.33, 493.88,
+          440.00, 392.00, 329.63, 392.00, 440.00, 0, 587.33, 0
+        ];
+        const bass = [
+          146.83, 0, 0, 0, 196.00, 0, 0, 0,
+          220.00, 0, 0, 0, 196.00, 0, 146.83, 0
+        ];
+
+        const tick = () => {
+          if (!this.bgmPlaying) return;
+          if (!this.muted && this.bgmEnabled && this.ctx) {
+            const mNote = melody[this.step % melody.length];
+            const bNote = bass[this.step % bass.length];
+            if (mNote > 0) {
+              this._koto(mNote, 0.036, 0.2);
+              if (this.feverMode && this.step % 2 === 0) {
+                this._koto(mNote * 2, 0.016, 0.15);
+              }
+            }
+            if (bNote > 0) this._koto(bNote, 0.042, 0.32);
+            if (this.step % 4 === 0) this._taiko(0.068);
+            if (this.step % 8 === 6) this._taiko(0.04);
+          }
+          this.step++;
+          const intervalMs = this.fastMode ? 190 : (this.feverMode ? 208 : 230);
+          this.bgmTimer = setTimeout(tick, intervalMs);
+        };
+        tick();
+      }
+
+      stopBgm() {
+        this.bgmPlaying = false;
+        if (this.bgmTimer) {
+          clearTimeout(this.bgmTimer);
+          this.bgmTimer = null;
+        }
+      }
+    }
+
+    const sound = new SoundEngine();
+
+    /* =========================================================================
+       3. SPEECH SYNTHESIS (JAPANESE VOICE READER)
+       ========================================================================= */
+    class VoiceReader {
+      constructor() {
+        this.voice = null;
+        this.supported = typeof window !== 'undefined' && 'speechSynthesis' in window;
+        if (this.supported) {
+          this.loadVoices();
+          window.speechSynthesis.onvoiceschanged = () => this.loadVoices();
+        }
+      }
+
+      loadVoices() {
+        if (!this.supported) return;
+        const voices = window.speechSynthesis.getVoices() || [];
+        const jaVoices = voices.filter(v => v.lang && v.lang.toLowerCase().startsWith('ja'));
+        this.voice =
+          jaVoices.find(v => /kyoko|o-ren|google|haruka|nanami/i.test(v.name)) ||
+          jaVoices[0] ||
+          null;
+      }
+
+      warmUp() {
+        if (!this.supported || sound.muted) return;
+        try {
+          window.speechSynthesis.cancel();
+          const u = new SpeechSynthesisUtterance('');
+          u.lang = 'ja-JP';
+          u.volume = 0;
+          window.speechSynthesis.speak(u);
+        } catch (e) {}
+      }
+
+      speak(text, rate = 1.0, onStart = null, onEnd = null) {
+        if (!this.supported || sound.muted) {
+          if (onStart) onStart();
+          setTimeout(() => { if (onEnd) onEnd(); }, 600);
+          return;
+        }
+        try {
+          window.speechSynthesis.cancel();
+          const u = new SpeechSynthesisUtterance(text);
+          u.lang = 'ja-JP';
+          if (this.voice) u.voice = this.voice;
+          u.rate = rate;
+          u.pitch = 1.04;
+          u.volume = 1.0;
+          u.onstart = () => { if (onStart) onStart(); };
+          u.onend = () => { if (onEnd) onEnd(); };
+          u.onerror = () => { if (onEnd) onEnd(); };
+          window.speechSynthesis.speak(u);
+        } catch (e) {
+          if (onEnd) onEnd();
+        }
+      }
+
+      stop() {
+        if (!this.supported) return;
+        try { window.speechSynthesis.cancel(); } catch (e) {}
+      }
+    }
+
+    const reader = new VoiceReader();
+
+    /* =========================================================================
+       4. PARTICLE FX ENGINE (CANVAS SPARKS & CONFETTI)
+       ========================================================================= */
+    const fxCanvas = document.getElementById('fxCanvas');
+    const fxCtx = fxCanvas.getContext('2d');
+    let particles = [];
+    let fxRaf = null;
+
+    function resizeFxCanvas() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      fxCanvas.width = window.innerWidth * dpr;
+      fxCanvas.height = window.innerHeight * dpr;
+      fxCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      if (state && (state.phase === 'playing' || state.phase === 'countdown')) {
+        layoutKarutaBoard();
+      }
+    }
+    window.addEventListener('resize', resizeFxCanvas);
+
+    function spawnBurst(x, y, count = 24, confetti = false) {
+      const colors = confetti
+        ? ['#F97316', '#FACC15', '#FFFFFF', '#FB923C', '#EF4444', '#38BDF8', '#4ADE80']
+        : ['#FFFFFF', '#FDE047', '#F97316', '#FDBA74', '#FEF08A'];
+      for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = confetti ? (4 + Math.random() * 9) : (3 + Math.random() * 7);
+        particles.push({
+          x,
+          y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed - (confetti ? 5 : 2),
+          size: confetti ? (6 + Math.random() * 6) : (4 + Math.random() * 5),
+          color: colors[Math.floor(Math.random() * colors.length)],
+          life: 1,
+          decay: confetti ? (0.011 + Math.random() * 0.008) : (0.028 + Math.random() * 0.02),
+          rot: Math.random() * Math.PI * 2,
+          vRot: (Math.random() - 0.5) * 0.25,
+          gravity: confetti ? 0.22 : 0.16,
+          isRect: confetti
+        });
+      }
+      if (!fxRaf) animateFx();
+    }
+
+    function animateFx() {
+      fxCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += p.gravity;
+        p.rot += p.vRot;
+        p.life -= p.decay;
+        if (p.life <= 0) {
+          particles.splice(i, 1);
+          continue;
+        }
+        fxCtx.save();
+        fxCtx.globalAlpha = Math.max(0, p.life);
+        fxCtx.translate(p.x, p.y);
+        fxCtx.rotate(p.rot);
+        fxCtx.fillStyle = p.color;
+        if (p.isRect) {
+          fxCtx.fillRect(-p.size / 2, -p.size / 3, p.size, p.size * 0.65);
+        } else {
+          fxCtx.beginPath();
+          fxCtx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
+          fxCtx.fill();
+        }
+        fxCtx.restore();
+      }
+      if (particles.length > 0) {
+        fxRaf = requestAnimationFrame(animateFx);
+      } else {
+        fxRaf = null;
+      }
+    }
+
+    function showFloatingText(x, y, text, colorClass = 'text-yellow-200') {
+      const el = document.createElement('div');
+      el.className = `float-feedback text-xl sm:text-2xl ${colorClass}`;
+      el.style.left = `${x}px`;
+      el.style.top = `${y}px`;
+      el.textContent = text;
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 920);
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.remove('opacity-0');
+      clearTimeout(t._timer);
+      t._timer = setTimeout(() => t.classList.add('opacity-0'), 2200);
+    }
+
+    /* =========================================================================
+       5. STORAGE (PERSONAL BESTS)
+       ========================================================================= */
+    const STORAGE_KEY = 'yoketsu_karuta_records_v1';
+
+    function loadRecords() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        return raw ? JSON.parse(raw) : {};
+      } catch (e) {
+        return {};
+      }
+    }
+
+    function saveRecord(modeKey, entry) {
+      const all = loadRecords();
+      if (!all[modeKey]) all[modeKey] = [];
+      const prevBest = all[modeKey].length > 0 ? all[modeKey][0].totalTime : Infinity;
+      all[modeKey].push(entry);
+      all[modeKey].sort((a, b) => a.totalTime - b.totalTime);
+      all[modeKey] = all[modeKey].slice(0, 5);
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+      } catch (e) {}
+      return entry.totalTime < prevBest;
+    }
+
+    function clearAllRecords() {
+      try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+    }
+
+    /* =========================================================================
+       6. APP STATE & GAME LOGIC
+       ========================================================================= */
+    const SPEEDS = [
+      { label: '標準 (1.0x)', rate: 1.0 },
+      { label: '速め (1.25x)', rate: 1.25 },
+      { label: '大会 (1.45x)', rate: 1.45 }
+    ];
+
+    const state = {
+      count: 10,            // 10 or 20
+      deck: 'gogyo',        // 'gogyo' | 'goyou' | 'mix'
+      speedIdx: 0,
+      showFurigana: false,
+      competitiveFlip: false, // true = top half upside-down like real competitive karuta
+      bgmOn: true,
+      phase: 'title',       // 'title' | 'countdown' | 'playing' | 'result'
+      isRevengeDrill: false,
+
+      // Gameplay session
+      boardCards: [],
+      queue: [],
+      currentIndex: 0,
+      currentCard: null,
+      startTime: 0,
+      questionStartTime: 0,
+      penaltySeconds: 0,
+      mistakes: 0,
+      currentQuestionMistakes: 0,
+      combo: 0,
+      maxCombo: 0,
+      logs: [],
+      ghostBestTime: null,
+      weakCardsForRevenge: [],
+      timerRaf: null,
+      countdownTimer: null,
+      nextQTimer: null,
+      inputLocked: true
+    };
+
+    const DECK_NAMES = { gogyo: '五行穴', goyou: '五要穴', mix: '全ミックス' };
+
+    function getModeKey() {
+      return `${state.deck}_${state.count}`;
+    }
+
+    function shuffle(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function drawUniqueCards(deckKey, count, mustInclude = []) {
+      const picked = [];
+      const seenPoints = new Set();
+      for (const item of mustInclude) {
+        if (!seenPoints.has(item.point)) {
+          seenPoints.add(item.point);
+          picked.push(item);
+          if (picked.length === count) break;
+        }
+      }
+      const pool = shuffle(DECKS[deckKey]);
+      for (const item of pool) {
+        if (picked.length >= count) break;
+        if (!seenPoints.has(item.point)) {
+          seenPoints.add(item.point);
+          picked.push(item);
+        }
+      }
+      return shuffle(picked);
+    }
+
+    function switchScreen(name) {
+      state.phase = name;
+      ['title', 'play', 'result'].forEach(s => {
+        document.getElementById(`screen-${s}`).classList.toggle('hidden', s !== name);
+      });
+      if (name === 'title') {
+        updateTitleUI();
+      }
+    }
+
+    /* =========================================================================
+       7. TITLE UI SYNC
+       ========================================================================= */
+    function updateTitleUI() {
+      document.querySelectorAll('.count-opt').forEach(btn => {
+        const active = Number(btn.dataset.count) === state.count;
+        btn.className = active
+          ? 'count-opt relative rounded-2xl p-3.5 sm:p-4 border-2 text-left transition active:scale-98 bg-orange-500 text-white border-orange-600 shadow-md'
+          : 'count-opt relative rounded-2xl p-3.5 sm:p-4 border-2 text-left transition active:scale-98 bg-white text-gray-900 border-orange-200 hover:border-orange-400';
+      });
+
+      document.querySelectorAll('.deck-opt').forEach(btn => {
+        const active = btn.dataset.deck === state.deck;
+        btn.className = active
+          ? 'deck-opt rounded-2xl p-3 border-2 text-center transition active:scale-95 bg-orange-500 text-white border-orange-600 shadow-md'
+          : 'deck-opt rounded-2xl p-3 border-2 text-center transition active:scale-95 bg-white text-gray-900 border-orange-200 hover:border-orange-400';
+      });
+
+      const badgeMap = {
+        gogyo: '全60穴（12経脈×5穴）から出題',
+        goyou: '全60穴（原・郄・絡・募・背部兪）から出題',
+        mix: '全120問から重複なしで出題'
+      };
+      document.getElementById('deck-count-badge').textContent = badgeMap[state.deck];
+      document.getElementById('opt-speed-val').textContent = SPEEDS[state.speedIdx].label;
+      document.getElementById('opt-furigana-val').textContent = state.showFurigana ? 'ON（学習用）' : 'OFF（本番）';
+      document.getElementById('opt-orientation-val').textContent = state.competitiveFlip ? '上下ミックス' : '正位置';
+      document.getElementById('opt-bgm-val').textContent = state.bgmOn ? 'ON（和モダン）' : 'OFF';
+      document.getElementById('btn-title-mute').textContent = sound.muted ? '音 OFF' : '音 ON';
+
+      const modeKey = getModeKey();
+      const recs = loadRecords()[modeKey] || [];
+      document.getElementById('pb-mode-label').textContent = `自己ベスト（${DECK_NAMES[state.deck]}・${state.count}枚）`;
+      if (recs.length > 0) {
+        const best = recs[0];
+        document.getElementById('pb-best-time').textContent = `${best.totalTime.toFixed(2)} 秒`;
+        document.getElementById('pb-best-sub').textContent = `平均 ${best.avgReact.toFixed(2)}秒 / 正答率 ${best.accuracy}%`;
+      } else {
+        document.getElementById('pb-best-time').textContent = '--.-- 秒';
+        document.getElementById('pb-best-sub').textContent = '初挑戦で記録を作ろう！';
+      }
+    }
+
+    /* =========================================================================
+       8. DYNAMIC 52:73 PORTRAIT KARUTA BOARD LAYOUT
+       ========================================================================= */
+    function layoutKarutaBoard() {
+      const wrap = document.getElementById('karuta-board-wrap');
+      const board = document.getElementById('karuta-board');
+      if (!wrap || !board) return;
+
+      const availW = Math.max(260, wrap.clientWidth - 4);
+      const availH = Math.max(220, wrap.clientHeight - 4);
+
+      const isNarrow = availW < 440;
+      const cols = state.count === 10 ? (isNarrow ? 2 : 5) : (isNarrow ? 4 : 5);
+      const rows = Math.ceil(state.count / cols);
+      const gap = isNarrow ? 8 : (state.count === 10 ? 14 : 10);
+
+      // Authentic karuta card ratio: width / height = 52 / 73
+      const ratio = 52 / 73;
+      const maxCardWByWidth = (availW - gap * (cols - 1)) / cols;
+      const maxCardHByHeight = (availH - gap * (rows - 1)) / rows;
+      const maxCardWByHeight = maxCardHByHeight * ratio;
+
+      const cardW = Math.floor(Math.min(maxCardWByWidth, maxCardWByHeight));
+      const cardH = Math.floor(cardW / ratio);
+
+      board.style.gridTemplateColumns = `repeat(${cols}, ${cardW}px)`;
+      board.style.gridTemplateRows = `repeat(${rows}, ${cardH}px)`;
+      board.style.gap = `${gap}px`;
+
+      // Scale vertical kanji font cleanly to card height
+      const cards = board.querySelectorAll('.karuta-card');
+      cards.forEach(btn => {
+        btn.style.width = `${cardW}px`;
+        btn.style.height = `${cardH}px`;
+        const mainText = btn.querySelector('.karuta-kanji');
+        const furiText = btn.querySelector('.karuta-furi');
+        if (mainText) {
+          const len = mainText.textContent.length;
+          const factor = len <= 2 ? 0.30 : (len === 3 ? 0.23 : 0.185);
+          const fontPx = Math.max(15, Math.min(48, Math.floor(cardH * factor)));
+          mainText.style.fontSize = `${fontPx}px`;
+        }
+        if (furiText) {
+          const furiPx = Math.max(9, Math.min(13, Math.floor(cardW * 0.11)));
+          furiText.style.fontSize = `${furiPx}px`;
+        }
+      });
+    }
+
+    /* =========================================================================
+       9. GAMEPLAY FLOW
+       ========================================================================= */
+    function startGame(revengeCards = null) {
+      sound.init();
+      sound.bgmEnabled = state.bgmOn;
+      reader.warmUp();
+      sound.playClick();
+
+      stopAllTimers();
+
+      state.isRevengeDrill = Array.isArray(revengeCards) && revengeCards.length > 0;
+      const activeCount = state.isRevengeDrill ? 10 : state.count;
+      state.boardCards = state.isRevengeDrill
+        ? drawUniqueCards(state.deck, 10, revengeCards)
+        : drawUniqueCards(state.deck, activeCount);
+
+      state.queue = shuffle(state.boardCards);
+      state.currentIndex = 0;
+      state.currentCard = null;
+      state.penaltySeconds = 0;
+      state.mistakes = 0;
+      state.currentQuestionMistakes = 0;
+      state.combo = 0;
+      state.maxCombo = 0;
+      state.logs = [];
+      state.inputLocked = true;
+      sound.fastMode = false;
+      sound.feverMode = false;
+
+      document.getElementById('screen-play').classList.remove('fever-active');
+      document.getElementById('hud-combo-label').textContent = 'COMBO';
+      document.getElementById('hud-combo-box').className = 'bg-gray-900/85 text-yellow-300 rounded-xl px-2.5 py-1.5 text-center min-w-[56px] transition-all';
+
+      // Load Ghost Personal Best (for non-revenge runs)
+      const recs = !state.isRevengeDrill ? (loadRecords()[getModeKey()] || []) : [];
+      state.ghostBestTime = recs.length > 0 ? recs[0].totalTime : null;
+
+      const ghostBadge = document.getElementById('hud-ghost-badge');
+      const ghostBar = document.getElementById('hud-ghost-bar');
+      if (state.ghostBestTime !== null) {
+        ghostBadge.textContent = `BEST ${state.ghostBestTime.toFixed(2)}s`;
+        ghostBadge.className = 'text-[11px] sm:text-xs font-black px-2 py-1 rounded-lg bg-orange-100 text-orange-700 tabular-nums whitespace-nowrap';
+        ghostBar.classList.remove('hidden');
+        ghostBar.style.width = '0%';
+      } else {
+        ghostBadge.textContent = state.isRevengeDrill ? '苦手特訓中' : '初記録に挑戦';
+        ghostBadge.className = 'text-[11px] sm:text-xs font-black px-2 py-1 rounded-lg bg-orange-100 text-orange-700 tabular-nums whitespace-nowrap';
+        ghostBar.classList.add('hidden');
+      }
+
+      document.getElementById('prompt-q-badge').textContent = '準備中';
+      document.getElementById('prompt-status').textContent = '耳を澄ませて、音声から札を取ろう！';
+      document.getElementById('prompt-last-taken').textContent = '聞き逃したら右の「もう一度」をタップ';
+      document.getElementById('btn-play-bgm').textContent = state.bgmOn ? 'BGM ON' : 'BGM OFF';
+
+      switchScreen('play');
+      renderBoard();
+      requestAnimationFrame(() => layoutKarutaBoard());
+      updatePlayHud(0);
+      runCountdown();
+    }
+
+    function stopAllTimers() {
+      if (state.timerRaf) { cancelAnimationFrame(state.timerRaf); state.timerRaf = null; }
+      if (state.countdownTimer) { clearTimeout(state.countdownTimer); state.countdownTimer = null; }
+      if (state.nextQTimer) { clearTimeout(state.nextQTimer); state.nextQTimer = null; }
+      sound.stopBgm();
+      reader.stop();
+    }
+
+    function runCountdown() {
+      state.phase = 'countdown';
+      const overlay = document.getElementById('overlay-countdown');
+      const numEl = document.getElementById('countdown-num');
+      document.getElementById('countdown-subtitle').textContent = state.isRevengeDrill
+        ? '苦手克服・10枚リベンジ特訓'
+        : `${DECK_NAMES[state.deck]}・${state.count}枚 タイムアタック`;
+      overlay.classList.remove('hidden');
+
+      const seq = ['3', '2', '1', '開始！'];
+      let i = 0;
+
+      const step = () => {
+        if (state.phase !== 'countdown') return;
+        numEl.textContent = seq[i];
+        numEl.classList.remove('countdown-pop');
+        void numEl.offsetWidth;
+        numEl.classList.add('countdown-pop');
+
+        if (i < 3) {
+          sound.playClack(false);
+          i++;
+          state.countdownTimer = setTimeout(step, 680);
+        } else {
+          sound.playClack(true);
+          state.countdownTimer = setTimeout(() => {
+            overlay.classList.add('hidden');
+            beginPlaying();
+          }, 460);
+        }
+      };
+      step();
+    }
+
+    function beginPlaying() {
+      state.phase = 'playing';
+      state.startTime = performance.now();
+      if (state.bgmOn && !sound.muted) {
+        sound.startBgm();
+      }
+      startMainTimerLoop();
+      askCurrentQuestion();
+    }
+
+    function startMainTimerLoop() {
+      const loop = () => {
+        if (state.phase !== 'playing') return;
+        const elapsed = (performance.now() - state.startTime) / 1000 + state.penaltySeconds;
+        updatePlayHud(elapsed);
+        state.timerRaf = requestAnimationFrame(loop);
+      };
+      state.timerRaf = requestAnimationFrame(loop);
+    }
+
+    function updatePlayHud(elapsedSec) {
+      document.getElementById('hud-timer').textContent = elapsedSec.toFixed(2).padStart(5, '0');
+      const total = state.queue.length;
+      const rem = total - state.currentIndex;
+      document.getElementById('hud-remaining').textContent = String(rem);
+      document.getElementById('hud-combo').textContent = String(state.combo);
+      const pct = total > 0 ? (state.currentIndex / total) * 100 : 0;
+      document.getElementById('hud-progress').style.width = `${pct}%`;
+
+      // Live Ghost Pace Comparison against Personal Best
+      if (state.ghostBestTime !== null && total > 0) {
+        const ghostPct = Math.min(100, (elapsedSec / state.ghostBestTime) * 100);
+        document.getElementById('hud-ghost-bar').style.width = `${ghostPct}%`;
+        if (state.currentIndex > 0) {
+          const expectedAtProgress = state.ghostBestTime * (state.currentIndex / total);
+          const diff = elapsedSec - expectedAtProgress;
+          const badge = document.getElementById('hud-ghost-badge');
+          if (diff <= 0) {
+            badge.textContent = `${diff.toFixed(2)}s リード!`;
+            badge.className = 'text-[11px] sm:text-xs font-black px-2 py-1 rounded-lg bg-emerald-100 text-emerald-700 tabular-nums whitespace-nowrap';
+          } else {
+            badge.textContent = `+${diff.toFixed(2)}s`;
+            badge.className = 'text-[11px] sm:text-xs font-black px-2 py-1 rounded-lg bg-amber-100 text-amber-800 tabular-nums whitespace-nowrap';
+          }
+        }
+      }
+    }
+
+    function renderBoard() {
+      const board = document.getElementById('karuta-board');
+      board.innerHTML = '';
+      const halfCount = Math.floor(state.boardCards.length / 2);
+
+      state.boardCards.forEach((card, idx) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.dataset.id = card.id;
+        const flipClass = (state.competitiveFlip && idx < halfCount) ? ' upside-down' : '';
+        btn.className = `karuta-card${flipClass}`;
+
+        const furiHtml = state.showFurigana
+          ? `<span class="karuta-furi vertical-text font-bold text-orange-600/90 mr-0.5 tracking-tighter">${card.pointRead}</span>`
+          : '';
+
+        btn.innerHTML = `
+          <div class="karuta-inner flex flex-row-reverse items-center justify-center px-1 py-1.5 pointer-events-none">
+            <span class="karuta-kanji font-karuta vertical-text font-extrabold text-gray-900">${card.point}</span>
+            ${furiHtml}
+          </div>
+        `;
+
+        btn.addEventListener('pointerdown', (e) => {
+          e.preventDefault();
+          handleCardTap(card, btn, e);
+        });
+
+        board.appendChild(btn);
+      });
+
+      layoutKarutaBoard();
+    }
+
+    function setVoiceWave(active) {
+      document.querySelectorAll('.voice-bar').forEach(b => {
+        b.classList.toggle('idle', !active);
+      });
+    }
+
+    function speakCardPrompt(card) {
+      const readText = `${card.meridianRead}、${card.roleRead}`;
+      const rate = SPEEDS[state.speedIdx].rate;
+      setVoiceWave(true);
+      document.getElementById('prompt-status').textContent = '読み上げ中… 音声から札を取ろう！';
+      reader.speak(
+        readText,
+        rate,
+        () => setVoiceWave(true),
+        () => {
+          setVoiceWave(false);
+          if (state.phase === 'playing') {
+            document.getElementById('prompt-status').textContent = 'どのツボ？ パッとタップ！';
+          }
+        }
+      );
+    }
+
+    function askCurrentQuestion() {
+      if (state.currentIndex >= state.queue.length) {
+        finishGame();
+        return;
+      }
+
+      const card = state.queue[state.currentIndex];
+      state.currentCard = card;
+      state.currentQuestionMistakes = 0;
+      state.questionStartTime = performance.now();
+      state.inputLocked = false;
+
+      const remaining = state.queue.length - state.currentIndex;
+      if (remaining <= 3 && !sound.fastMode) {
+        sound.fastMode = true;
+      }
+
+      document.querySelectorAll('.karuta-card.hint-glow').forEach(el => el.classList.remove('hint-glow'));
+      document.getElementById('prompt-q-badge').textContent = `第${state.currentIndex + 1} / ${state.queue.length}問`;
+
+      sound.playPromptCue();
+      speakCardPrompt(card);
+    }
+
+    function handleCardTap(card, btnEl, event) {
+      if (state.phase !== 'playing' || state.inputLocked || btnEl.classList.contains('taken')) return;
+
+      const rect = btnEl.getBoundingClientRect();
+      const rx = (event.clientX || (rect.left + rect.width / 2)) - rect.left;
+      const ry = (event.clientY || (rect.top + rect.height / 2)) - rect.top;
+      const ripple = document.createElement('span');
+      ripple.className = 'tap-ripple';
+      ripple.style.left = `${rx}px`;
+      ripple.style.top = `${ry}px`;
+      btnEl.appendChild(ripple);
+      setTimeout(() => ripple.remove(), 450);
+
+      const cx = event.clientX || (rect.left + rect.width / 2);
+      const cy = event.clientY || (rect.top + rect.height / 2);
+
+      if (card.id === state.currentCard.id) {
+        state.inputLocked = true;
+        reader.stop();
+        setVoiceWave(false);
+
+        const reactSec = (performance.now() - state.questionStartTime) / 1000;
+        state.combo++;
+        if (state.combo > state.maxCombo) state.maxCombo = state.combo;
+
+        // Fever mode at 5+ combo!
+        const comboBox = document.getElementById('hud-combo-box');
+        if (state.combo >= 5) {
+          sound.feverMode = true;
+          document.getElementById('screen-play').classList.add('fever-active');
+          document.getElementById('hud-combo-label').textContent = 'FEVER!';
+          comboBox.className = 'bg-gradient-to-br from-yellow-300 to-amber-500 text-gray-900 rounded-xl px-2.5 py-1.5 text-center min-w-[56px] shadow-lg transition-all';
+        }
+        comboBox.style.transform = 'scale(1.22)';
+        setTimeout(() => { comboBox.style.transform = 'scale(1)'; }, 150);
+
+        sound.playCorrect(state.combo);
+        spawnBurst(cx, cy, state.combo >= 5 ? 34 : 20, false);
+
+        let speedTag = '';
+        if (reactSec < 1.0) speedTag = '電光石火! ';
+        else if (reactSec < 1.5) speedTag = '神速! ';
+        else if (reactSec < 2.2) speedTag = 'ナイス! ';
+        showFloatingText(cx, cy - 16, `${speedTag}${reactSec.toFixed(2)}s`, 'text-yellow-200');
+
+        // Confirm taken card AFTER taking it (never spoils next question)
+        document.getElementById('prompt-last-taken').textContent =
+          `✓ ${card.point}（${card.meridianShort}・${card.role}）${reactSec.toFixed(2)}秒`;
+
+        const dirClass = cx < window.innerWidth / 2 ? 'taken-left' : 'taken-right';
+        btnEl.classList.add('taken', dirClass);
+
+        state.logs.push({
+          card,
+          reactSec,
+          mistakes: state.currentQuestionMistakes
+        });
+
+        state.currentIndex++;
+        const elapsed = (performance.now() - state.startTime) / 1000 + state.penaltySeconds;
+        updatePlayHud(elapsed);
+
+        if (state.currentIndex >= state.queue.length) {
+          state.nextQTimer = setTimeout(() => finishGame(), 380);
+        } else {
+          state.nextQTimer = setTimeout(() => askCurrentQuestion(), 320);
+        }
+      } else {
+        state.mistakes++;
+        state.currentQuestionMistakes++;
+        state.penaltySeconds += 2.0;
+        state.combo = 0;
+        sound.feverMode = false;
+        document.getElementById('screen-play').classList.remove('fever-active');
+        document.getElementById('hud-combo-label').textContent = 'COMBO';
+        document.getElementById('hud-combo-box').className = 'bg-gray-900/85 text-yellow-300 rounded-xl px-2.5 py-1.5 text-center min-w-[56px] transition-all';
+
+        sound.playWrong();
+        btnEl.classList.remove('wrong-shake');
+        void btnEl.offsetWidth;
+        btnEl.classList.add('wrong-shake');
+        setTimeout(() => btnEl.classList.remove('wrong-shake'), 380);
+
+        showFloatingText(cx, cy - 14, 'お手つき +2.0s', 'text-red-200');
+      }
+    }
+
+    function finishGame() {
+      const rawElapsed = (performance.now() - state.startTime) / 1000;
+      const totalTime = rawElapsed + state.penaltySeconds;
+      stopAllTimers();
+      state.phase = 'result';
+
+      const cardCount = state.queue.length;
+      const avgReact = state.logs.length > 0
+        ? state.logs.reduce((s, l) => s + l.reactSec, 0) / state.logs.length
+        : 0;
+      const bestReact = state.logs.length > 0
+        ? Math.min(...state.logs.map(l => l.reactSec))
+        : 0;
+      const totalTaps = state.logs.length + state.mistakes;
+      const accuracy = totalTaps > 0 ? Math.round((state.logs.length / totalTaps) * 100) : 100;
+
+      const secPerCard = totalTime / cardCount;
+      let rank = 'C';
+      if (secPerCard <= 1.8 && state.mistakes === 0) rank = 'S+';
+      else if (secPerCard <= 2.4) rank = 'S';
+      else if (secPerCard <= 3.3) rank = 'A';
+      else if (secPerCard <= 4.5) rank = 'B';
+
+      const recordEntry = {
+        totalTime: Number(totalTime.toFixed(2)),
+        avgReact: Number(avgReact.toFixed(2)),
+        accuracy,
+        mistakes: state.mistakes,
+        rank,
+        date: new Date().toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+      };
+
+      const isNewRecord = !state.isRevengeDrill && saveRecord(getModeKey(), recordEntry);
+
+      document.getElementById('res-new-record').classList.toggle('hidden', !isNewRecord);
+      document.getElementById('res-mode-info').textContent = state.isRevengeDrill
+        ? '苦手克服・10枚リベンジ特訓'
+        : `${DECK_NAMES[state.deck]}・${state.count}枚モード${state.competitiveFlip ? '（上下ミックス）' : ''}`;
+      document.getElementById('res-rank-badge').textContent = rank;
+      document.getElementById('res-total-time').innerHTML = `${totalTime.toFixed(2)}<span class="text-xl ml-1">秒</span>`;
+      document.getElementById('res-penalty-note').textContent = state.mistakes === 0
+        ? 'ノーミス完走！お見事！'
+        : `お手つき ${state.mistakes}回（ペナルティ +${state.penaltySeconds.toFixed(1)}秒含む）`;
+
+      document.getElementById('res-avg-react').textContent = `${avgReact.toFixed(2)}秒`;
+      document.getElementById('res-best-react').textContent = `${bestReact.toFixed(2)}秒`;
+      document.getElementById('res-accuracy').textContent = `${accuracy}%`;
+      document.getElementById('res-max-combo').textContent = `${state.maxCombo}`;
+
+      // Identify weak cards (missed or > 2.5s) for revenge drill
+      const sorted = [...state.logs].sort((a, b) => (b.mistakes - a.mistakes) || (b.reactSec - a.reactSec));
+      const weak = sorted.filter(l => l.mistakes > 0 || l.reactSec >= 2.5).slice(0, 6).map(l => l.card);
+      state.weakCardsForRevenge = weak;
+      const revengeBtn = document.getElementById('btn-revenge');
+      if (weak.length > 0) {
+        revengeBtn.textContent = `苦手だった${weak.length}枚を集中特訓する（10枚リベンジ）`;
+        revengeBtn.classList.remove('hidden');
+      } else {
+        revengeBtn.classList.add('hidden');
+      }
+
+      const reviewList = document.getElementById('res-review-list');
+      reviewList.innerHTML = '';
+      sorted.forEach(item => {
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'w-full text-left flex items-center justify-between gap-3 p-3 rounded-2xl bg-orange-50 hover:bg-orange-100 active:scale-[0.99] transition border border-orange-200/70';
+        const missBadge = item.mistakes > 0
+          ? `<span class="text-[11px] font-black px-2 py-0.5 rounded-full bg-red-100 text-red-700">お手つき ${item.mistakes}</span>`
+          : `<span class="text-[11px] font-black px-2 py-0.5 rounded-full bg-green-100 text-green-700">一発</span>`;
+        row.innerHTML = `
+          <div class="min-w-0">
+            <div class="text-xs font-bold text-orange-700">${item.card.meridian}・${item.card.role}</div>
+            <div class="flex items-baseline gap-2 mt-0.5">
+              <span class="font-karuta text-lg font-extrabold text-gray-900">${item.card.point}</span>
+              <span class="text-xs font-bold text-gray-500">（${item.card.pointRead}）</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            ${missBadge}
+            <span class="text-sm font-black tabular-nums text-gray-900">${item.reactSec.toFixed(2)}s</span>
+          </div>
+        `;
+        row.addEventListener('click', () => {
+          sound.playClick();
+          reader.speak(`${item.card.meridianRead}、${item.card.roleRead}、${item.card.pointRead}`, 1.0);
+        });
+        reviewList.appendChild(row);
+      });
+
+      switchScreen('result');
+      sound.playFanfare(isNewRecord);
+
+      setTimeout(() => {
+        spawnBurst(window.innerWidth * 0.3, window.innerHeight * 0.3, isNewRecord ? 45 : 22, true);
+        spawnBurst(window.innerWidth * 0.7, window.innerHeight * 0.3, isNewRecord ? 45 : 22, true);
+      }, 150);
+    }
+
+    /* =========================================================================
+       10. MODALS (RECORDS & DICTIONARY)
+       ========================================================================= */
+    function renderRecordsModal() {
+      const container = document.getElementById('records-content');
+      const all = loadRecords();
+      const modes = [
+        { key: 'gogyo_10', label: '五行穴・10枚' },
+        { key: 'gogyo_20', label: '五行穴・20枚' },
+        { key: 'goyou_10', label: '五要穴・10枚' },
+        { key: 'goyou_20', label: '五要穴・20枚' },
+        { key: 'mix_10', label: '全ミックス・10枚' },
+        { key: 'mix_20', label: '全ミックス・20枚' }
+      ];
+
+      let html = '';
+      modes.forEach(m => {
+        const list = all[m.key] || [];
+        html += `<div class="rounded-2xl border border-orange-200 overflow-hidden">
+          <div class="bg-orange-100 px-3.5 py-2 text-xs font-black text-orange-900 flex justify-between">
+            <span>${m.label}</span>
+            <span>${list.length > 0 ? `BEST ${list[0].totalTime.toFixed(2)}秒` : '記録なし'}</span>
+          </div>`;
+        if (list.length === 0) {
+          html += `<div class="px-3.5 py-2.5 text-xs font-bold text-gray-400">まだプレイ記録がありません</div>`;
+        } else {
+          html += `<div class="divide-y divide-orange-100">`;
+          list.forEach((r, idx) => {
+            html += `<div class="px-3.5 py-2 flex items-center justify-between text-xs">
+              <div class="flex items-center gap-2">
+                <span class="w-5 h-5 rounded-full ${idx === 0 ? 'bg-orange-500 text-white' : 'bg-gray-200 text-gray-700'} font-black flex items-center justify-center text-[10px]">${idx + 1}</span>
+                <span class="font-black text-gray-900 text-sm tabular-nums">${r.totalTime.toFixed(2)}秒</span>
+                <span class="px-1.5 py-0.5 rounded bg-orange-50 text-orange-700 font-black">${r.rank}</span>
+              </div>
+              <div class="text-gray-500 font-bold">正答${r.accuracy}%・${r.date}</div>
+            </div>`;
+          });
+          html += `</div>`;
+        }
+        html += `</div>`;
+      });
+      container.innerHTML = html;
+    }
+
+    let currentDictTab = 'gogyo';
+    function renderDictionary() {
+      const q = document.getElementById('dict-search').value.trim();
+      const list = DECKS[currentDictTab].filter(item => {
+        if (!q) return true;
+        return item.meridian.includes(q) || item.role.includes(q) || item.point.includes(q) || item.pointRead.includes(q);
+      });
+      const container = document.getElementById('dict-list');
+      container.innerHTML = '';
+      if (list.length === 0) {
+        container.innerHTML = '<div class="text-center py-8 text-sm font-bold text-gray-400">該当する要穴が見つかりません</div>';
+        return;
+      }
+      list.forEach(item => {
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'w-full text-left flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl bg-orange-50/70 hover:bg-orange-100 active:scale-[0.99] transition border border-orange-200/60';
+        row.innerHTML = `
+          <div>
+            <span class="text-xs font-extrabold text-orange-700">${item.meridian}</span>
+            <span class="ml-2 text-xs font-black px-2 py-0.5 rounded bg-white border border-orange-200 text-gray-800">${item.role}</span>
+          </div>
+          <div class="text-right">
+            <span class="font-karuta text-lg font-extrabold text-gray-900">${item.point}</span>
+            <span class="ml-1 text-xs font-bold text-gray-500">(${item.pointRead})</span>
+          </div>
+        `;
+        row.addEventListener('click', () => {
+          sound.playClick();
+          reader.speak(`${item.meridianRead}、${item.roleRead}、${item.pointRead}`, 1.0);
+          showToast(`読み上げ: ${item.meridian} ${item.role} → ${item.point}`);
+        });
+        container.appendChild(row);
+      });
+    }
+
+    /* =========================================================================
+       11. EVENT LISTENERS
+       ========================================================================= */
+    document.querySelectorAll('.count-opt').forEach(btn => {
+      btn.addEventListener('click', () => {
+        sound.playClick();
+        state.count = Number(btn.dataset.count);
+        updateTitleUI();
+      });
+    });
+
+    document.querySelectorAll('.deck-opt').forEach(btn => {
+      btn.addEventListener('click', () => {
+        sound.playClick();
+        state.deck = btn.dataset.deck;
+        updateTitleUI();
+      });
+    });
+
+    document.getElementById('opt-speed').addEventListener('click', () => {
+      sound.playClick();
+      state.speedIdx = (state.speedIdx + 1) % SPEEDS.length;
+      updateTitleUI();
+    });
+
+    document.getElementById('opt-furigana').addEventListener('click', () => {
+      sound.playClick();
+      state.showFurigana = !state.showFurigana;
+      updateTitleUI();
+    });
+
+    document.getElementById('opt-orientation').addEventListener('click', () => {
+      sound.playClick();
+      state.competitiveFlip = !state.competitiveFlip;
+      updateTitleUI();
+    });
+
+    document.getElementById('opt-bgm').addEventListener('click', () => {
+      sound.playClick();
+      state.bgmOn = !state.bgmOn;
+      sound.bgmEnabled = state.bgmOn;
+      updateTitleUI();
+    });
+
+    document.getElementById('btn-title-mute').addEventListener('click', () => {
+      sound.muted = !sound.muted;
+      if (!sound.muted) sound.playClick();
+      else reader.stop();
+      updateTitleUI();
+    });
+
+    document.getElementById('btn-start-game').addEventListener('click', () => startGame(null));
+
+    document.getElementById('btn-quit').addEventListener('click', () => {
+      sound.playClick();
+      stopAllTimers();
+      document.getElementById('overlay-countdown').classList.add('hidden');
+      switchScreen('title');
+    });
+
+    document.getElementById('btn-play-bgm').addEventListener('click', () => {
+      sound.playClick();
+      state.bgmOn = !state.bgmOn;
+      sound.bgmEnabled = state.bgmOn;
+      document.getElementById('btn-play-bgm').textContent = state.bgmOn ? 'BGM ON' : 'BGM OFF';
+      if (state.bgmOn && !sound.muted && state.phase === 'playing') {
+        sound.startBgm();
+      } else {
+        sound.stopBgm();
+      }
+    });
+
+    document.getElementById('btn-replay-voice').addEventListener('click', () => {
+      if (state.phase !== 'playing' || !state.currentCard) return;
+      sound.playClick();
+      speakCardPrompt(state.currentCard);
+    });
+
+    document.getElementById('btn-hint').addEventListener('click', () => {
+      if (state.phase !== 'playing' || !state.currentCard) return;
+      sound.playClick();
+      const targetBtn = document.querySelector(`.karuta-card[data-id="${state.currentCard.id}"]`);
+      if (targetBtn) {
+        targetBtn.classList.add('hint-glow');
+      }
+      speakCardPrompt(state.currentCard);
+      showToast('ヒント：正解の札が光りました！');
+    });
+
+    document.getElementById('btn-retry').addEventListener('click', () => startGame(null));
+    document.getElementById('btn-revenge').addEventListener('click', () => startGame(state.weakCardsForRevenge));
+    document.getElementById('btn-to-title').addEventListener('click', () => {
+      sound.playClick();
+      switchScreen('title');
+    });
+
+    // Records modal
+    document.getElementById('btn-open-records').addEventListener('click', () => {
+      sound.playClick();
+      renderRecordsModal();
+      document.getElementById('modal-records').classList.remove('hidden');
+    });
+    document.getElementById('btn-close-records').addEventListener('click', () => {
+      sound.playClick();
+      document.getElementById('modal-records').classList.add('hidden');
+    });
+    document.getElementById('btn-clear-records').addEventListener('click', () => {
+      sound.playClick();
+      clearAllRecords();
+      renderRecordsModal();
+      updateTitleUI();
+      showToast('自己ベスト履歴をリセットしました');
+    });
+
+    // Dictionary modal
+    document.getElementById('btn-open-dict').addEventListener('click', () => {
+      sound.playClick();
+      renderDictionary();
+      document.getElementById('modal-dict').classList.remove('hidden');
+    });
+    document.getElementById('btn-close-dict').addEventListener('click', () => {
+      sound.playClick();
+      reader.stop();
+      document.getElementById('modal-dict').classList.add('hidden');
+    });
+    document.querySelectorAll('.dict-tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        sound.playClick();
+        currentDictTab = btn.dataset.dictTab;
+        document.querySelectorAll('.dict-tab').forEach(b => {
+          const active = b.dataset.dictTab === currentDictTab;
+          b.className = active
+            ? 'dict-tab px-4 py-1.5 rounded-full text-xs font-black bg-orange-500 text-white'
+            : 'dict-tab px-4 py-1.5 rounded-full text-xs font-black bg-white text-gray-700 border border-orange-200';
+        });
+        renderDictionary();
+      });
+    });
+    document.getElementById('dict-search').addEventListener('input', renderDictionary);
+
+    window.addEventListener('DOMContentLoaded', () => {
+      resizeFxCanvas();
+      updateTitleUI();
+    });
+  </script>
+</body>
+</html>
